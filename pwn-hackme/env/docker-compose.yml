@@ -1,0 +1,20 @@
+version: '2.2'
+
+services:
+    pwn:
+        build: ./
+        image: sixstars/hackme
+        volumes: 
+            - ./sshd_config:/etc/ssh/sshd_config:ro
+            - ./hackme:/home/pwn/hackme:ro
+        ports:
+            - "10022:22"
+        pids_limit: 1024
+        cpus: 0.5
+        restart: unless-stopped
+        
+networks:
+    default:
+        external:
+            name: pwn
+

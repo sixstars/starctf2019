@@ -1,0 +1,10 @@
+apps:
+  - script   : "/usr/src/app/server.js"
+    name     : 'game'
+    max_memory_restart: '260M'
+    exec_mode: "fork"
+    uid: 'ctf'
+    gid: 'ctf'
+    output: '/root/out'
+    error: '/root/error'
+    args: ["-p 10081","--mongoServer=mongo","--waitForDatabase=5000"]

@@ -1,0 +1,23 @@
+version: '2.0'
+
+services:
+  mongo:
+    image: 'mongo:3.4.4'
+    ports:
+      - '127.0.0.1:27017:27017'
+    volumes:
+      - 'mongo:/data/db'
+
+  phaserquest:
+    tty: true
+    stdin_open: true
+    depends_on:
+      - mongo
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: pm2-runtime /root/processes.yml
+    ports:
+      - '10081:10081'
+volumes:
+  mongo:
