@@ -5,8 +5,8 @@
 - Keep it fun
 
 ## Vulnerability
-- Unpack the original file by `upx upxofcpp`
-- Simple UAF
+- Unpack the original file by `upx -d upxofcpp`
+- Do code auditing, you will find a simple UAF bug
 
 ## Key points
 - PIE is enabled and there is no function prepared for information leakage
