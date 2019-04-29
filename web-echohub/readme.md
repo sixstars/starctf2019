@@ -1,4 +1,7 @@
 ### Echohub
+#### other writeup (via players)
+##### `mb_ereg_replace /e`
+https://gist.github.com/st98/7c8cff5fe149dcad17923da408a9916d
 
 #### A quick start
 
