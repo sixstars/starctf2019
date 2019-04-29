@@ -89,7 +89,7 @@ Now we can use `id = {"id":{"length":12}}` bypass it.
 ...
 ```
 Now , we change our payload to 
-`{"id":{"length":12},"toHexString":true,"length":0}`
+`id = {"length":0,"toHexString":true,"id":{"length":12}},`
 
 And then the whole payload will be sent to mongodb server.
 
