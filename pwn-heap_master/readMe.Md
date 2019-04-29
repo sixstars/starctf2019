@@ -57,7 +57,7 @@ Now program will print libc address and our segment address(we have write it to 
 overwrite `_dl_open_hook` just like step 3 & 4, it's a pointer of a function pointer, write our segment address in it.  
 
 #### step6
-trigger libc malloc or free error, program will load `_dl_open_hook` to a register and call it. In this libc, the register is rbx. And I find some gadgets in glibc as follows:  
+trigger libc malloc or free error, program will load `_dl_open_hook` to a register and call [reg]. In this libc, the register is rbx. And I find some gadgets in glibc as follows:  
 
 ```
 0x7FD7D: mov     rdi, [rbx+48h]
