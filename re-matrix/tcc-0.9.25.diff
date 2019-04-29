@@ -1,0 +1,652 @@
+diff -bur .//tcc-0.9.25/i386-gen.c ./src/i386-gen.c
+--- .//tcc-0.9.25/i386-gen.c	2009-05-18 22:27:06.000000000 +0800
++++ ./src/i386-gen.c	2019-03-27 17:34:51.068181128 +0800
+@@ -1,3 +1,10 @@
++#define OBF_PUSH_JMP_INSTEAD_OF_CALL
++//#define OBF_PROLOG
++#define OBF_RET
++#define OBF_NOISE_AROUND_OPI
++#define OBF_NOISE_AFTER_CALL
++#define OBF_LOAD
++
+ /*
+  *  X86 code generator for TCC
+  * 
+@@ -20,7 +27,6 @@
+ 
+ /* number of available registers */
+ #define NB_REGS             4
+-
+ /* a register can belong to several classes. The classes must be
+    sorted from more general to more precise (see gv2() code which does
+    assumptions on it). */
+@@ -89,6 +95,13 @@
+ static unsigned long func_bound_offset;
+ static int func_ret_sub;
+ 
++// my fn
++
++void random_noise_to_reg (int r);
++void print_vstack ();
++int is_reg_in_vstack (int r);
++void random_noise_to_regs (int save_EAX);
++
+ /* XXX: make it faster ? */
+ void g(int c)
+ {
+@@ -183,6 +196,104 @@
+     }
+ }
+ 
++void produce_load_sequence(int r, int fc)
++{
++	int i;
++	int t=rand_reg (3,6);
++	int c=rand_reg (0, 7);
++	unsigned int curval=0;
++	unsigned int rrr;
++
++        Sym *sym;
++
++	switch (c)
++	{
++	case 0: sym = external_global_sym(TOK___noise_const1, &int_type, 0); curval=0x7E4D1944; break;
++	case 1: sym = external_global_sym(TOK___noise_const2, &int_type, 0); curval=0xE5F3DA1C; break;
++	case 2: sym = external_global_sym(TOK___noise_const3, &int_type, 0); curval=0x4CE45CAF; break;
++	case 3: sym = external_global_sym(TOK___noise_const4, &int_type, 0); curval=0xC88F43F7; break;
++	case 4: sym = external_global_sym(TOK___noise_const5, &int_type, 0); curval=0x833EDD32; break;
++	case 5: sym = external_global_sym(TOK___noise_const6, &int_type, 0); curval=0x5918E72B; break;
++	case 6: sym = external_global_sym(TOK___noise_const7, &int_type, 0); curval=0xD19781E9; break;
++	case 7: sym = external_global_sym(TOK___noise_const8, &int_type, 0); curval=0xD15899C6; break;
++	};
++
++	o(0x8b);
++	o(0 << 6 | r << 3 | 5); // mod reg r/m
++	gen_le32(0); // disp32
++        greloc(cur_text_section, sym, ind-4, R_386_32);
++/*
++
++        Sym *sym = external_global_sym(TOK___noise_const2, &int_type, 0);
++	o(0x8d); // lea edi, noise_const
++	o(0x3d);
++	gen_le32(0); // disp32
++        greloc(cur_text_section, sym, ind-4, R_386_32);
++
++	o(0x81); // add edi, c*4
++	o(0xc7);
++	gen_le32(c*4); // disp32
++
++	o(0x8b); // mov r, [edi]
++	o(0 << 6 | r << 3 | 7); // mod reg r/m
++
++	curval=noise_const_[c];
++*/
++
++//	rrr=genrand(); curval=rrr;
++//	o(0xb8 + r);   // mov r, rrr
++//	gen_le32 (rrr); //
++
++	for (i=0; i<t; i++)
++	{
++		int q;
++		q=rand_reg (0, 4);
++
++		switch (q)
++		{
++		case 0: // add
++
++			rrr=genrand(); curval=curval+rrr;
++                	o(0x81); oad(0xc0 | (0 << 3) | r, rrr); // add
++			break;
++
++		case 1: // sub
++
++			rrr=genrand(); curval=curval-rrr;
++                	o(0x81); oad(0xc0 | (5 << 3) | r, rrr); // add
++			break;
++
++		case 2: // shl
++
++			rrr=genrand()&0x7; curval=curval<<rrr;
++
++			o(0xc1); /* shl/shr/sar $xxx, r */
++			o(0xe0 | r);
++			g(rrr);
++
++			break;
++
++		case 3: // shr
++
++			rrr=genrand()&0x7; curval=curval>>rrr;
++
++			o(0xc1); /* shl/shr/sar $xxx, r */
++			o(0xe8 | r);
++			g(rrr);
++
++			break;
++
++		case 4: // xor
++
++			rrr=genrand(); curval=curval^rrr;
++                	o(0x81); oad(0xc0 | (6 << 3) | r, rrr); // xor
++			break;
++		};
++	};
++
++
++	o(0x81); oad(0xc0 | (5 << 3) | r, curval-fc); // sub
++};
+ 
+ /* load 'r' from value 'sv' */
+ void load(int r, SValue *sv)
+@@ -226,8 +337,19 @@
+         gen_modrm(r, fr, sv->sym, fc);
+     } else {
+         if (v == VT_CONST) {
++#ifdef OBF_LOAD
++            if (fr & VT_SYM)
++#endif
++            {
+             o(0xb8 + r); /* mov $xx, r */
+             gen_addr32(fr, sv->sym, fc);
++            } 
++#ifdef OBF_LOAD
++            else
++            {
++                produce_load_sequence(r, fc);
++            };
++#endif
+         } else if (v == VT_LOCAL) {
+             o(0x8d); /* lea xxx(%ebp), r */
+             gen_modrm(r, VT_LOCAL, sv->sym, fc);
+@@ -302,6 +424,14 @@
+     int r;
+     if ((vtop->r & (VT_VALMASK | VT_LVAL)) == VT_CONST) {
+         /* constant case */
++#ifdef OBF_PUSH_JMP_INSTEAD_OF_CALL
++        if(is_jmp){
++            oad(0xe8, 0); // call $+5
++            o(0x58); // pop eax
++            o(0x83); o(0xc0); o(0x0a); // add eax, 0xa
++            o(0x50); // push eax
++        }
++#endif
+         if (vtop->r & VT_SYM) {
+             /* relocation case */
+             greloc(cur_text_section, vtop->sym, 
+@@ -311,7 +441,7 @@
+             put_elf_reloc(symtab_section, cur_text_section, 
+                           ind + 1, R_386_PC32, 0);
+         }
+-        oad(0xe8 + is_jmp, vtop->c.ul - 4); /* call/jmp im */
++        oad(0xe9, vtop->c.ul - 4); /* call/jmp im */
+     } else {
+         /* otherwise, indirect call */
+         r = gv(RC_INT);
+@@ -401,14 +531,25 @@
+             args_size -= 4;
+         }
+     }
++
+     gcall_or_jmp(0);
++
+     if (args_size && func_call != FUNC_STDCALL)
+         gadd_sp(args_size);
+     vtop--;
++#ifdef OBF_NOISE_AFTER_CALL
++    random_noise_to_regs(1);
++#endif
+ }
+ 
+-#ifdef TCC_TARGET_PE
++#ifdef TCC_TRAGET_I386
++
++#ifdef OBF_PROLOG
++#define FUNC_PROLOG_SIZE 11
++#else
+ #define FUNC_PROLOG_SIZE 10
++#endif
++
+ #else
+ #define FUNC_PROLOG_SIZE 9
+ #endif
+@@ -528,7 +669,12 @@
+ #endif
+     o(0xc9); /* leave */
+     if (func_ret_sub == 0) {
++#ifdef OBF_RET
++        o(0x5b); // pop ebx
++        o(0xff); o(0xe3); // jmp ebx
++#else
+         o(0xc3); /* ret */
++#endif
+     } else {
+         o(0xc2); /* ret n */
+         g(func_ret_sub);
+@@ -539,7 +685,7 @@
+     v = (-loc + 3) & -4; 
+     saved_ind = ind;
+     ind = func_sub_sp_offset - FUNC_PROLOG_SIZE;
+-#ifdef TCC_TARGET_PE
++#ifdef TCC_TRAGET_I386
+     if (v >= 4096) {
+         Sym *sym = external_global_sym(TOK___chkstk, &func_old_type, 0);
+         oad(0xb8, v); /* mov stacksize, %eax */
+@@ -548,12 +694,18 @@
+     } else
+ #endif
+     {
++#ifdef OBF_PROLOG
++        o(0x90);
++#endif
+         o(0xe58955);  /* push %ebp, mov %esp, %ebp */
+         o(0xec81);  /* sub esp, stacksize */
+         gen_le32(v);
+ #if FUNC_PROLOG_SIZE == 10
+         o(0x90);  /* adjust to FUNC_PROLOG_SIZE */
+ #endif
++#if FUNC_PROLOG_SIZE == 11
++        o(0x90);  /* adjust to FUNC_PROLOG_SIZE */
++#endif
+     }
+     ind = saved_ind;
+ }
+@@ -627,33 +779,21 @@
+ {
+     int r, fr, opc, c;
+ 
++#ifdef OBF_NOISE_AROUND_OPI
++    random_noise_to_regs(0);
++#endif
++
+     switch(op) {
+     case '+':
+     case TOK_ADDC1: /* add with carry generation */
+         opc = 0;
+     gen_op8:
+-        if ((vtop->r & (VT_VALMASK | VT_LVAL | VT_SYM)) == VT_CONST) {
+-            /* constant case */
+-            vswap();
+-            r = gv(RC_INT);
+-            vswap();
+-            c = vtop->c.i;
+-            if (c == (char)c) {
+-                /* XXX: generate inc and dec for smaller code ? */
+-                o(0x83);
+-                o(0xc0 | (opc << 3) | r);
+-                g(c);
+-            } else {
+-                o(0x81);
+-                oad(0xc0 | (opc << 3) | r, c);
+-            }
+-        } else {
+             gv2(RC_INT, RC_INT);
+             r = vtop[-1].r;
+             fr = vtop[0].r;
+-            o((opc << 3) | 0x01);
+-            o(0xc0 + r + fr * 8); 
+-        }
++        o((opc << 3) | 0x01); // ins ...
++        o(0xc0 + r + fr * 8); // ... r, fr
++
+         vtop--;
+         if (op >= TOK_ULT && op <= TOK_GT) {
+             vtop->r = VT_CMP;
+@@ -752,6 +892,9 @@
+         opc = 7;
+         goto gen_op8;
+     }
++#ifdef OBF_NOISE_AROUND_OPI
++    random_noise_to_regs(0);
++#endif
+ }
+ 
+ /* generate a floating point operation 'v = t1 op t2' instruction. The
+@@ -1032,3 +1175,171 @@
+ /* end of X86 code generator */
+ /*************************************************************/
+ 
++void random_LEA_noise_to_reg (int r)
++{
++	int mod=rand_reg (0,2);
++	int rm=rand_reg (0,7);
++
++	o(0x8d); // LEA
++	g((mod<<6) | (r << 3) | rm); // put modrm
++	//printf ("modrm=%x\n", (mod<<6) | (r << 3) | rm);
++
++	if (mod==1) // add disp8
++	{
++		int disp8 = genrand()&0xFF;
++		//printf ("adding disp8 0x%x\n", disp8);
++		g (disp8);
++	};
++
++	if (mod==2 || (mod==0 && rm==5)) // add disp32
++	{
++		int disp32=genrand();
++		//printf ("adding disp32 0x%x\n", disp32);
++		gen_le32 (disp32);
++	};
++
++	if ((mod==0 || mod==1 || mod==2) && rm==4) // add SIB
++	{
++		// SIB is scale(2), index(3), base(3)
++		int SIB=genrand()&0xFF;
++
++		if ((SIB&7) == 5) // special case
++		{
++			//printf ("special case. SIB before=0x%x\n", SIB);
++			SIB=SIB&0xF8;
++		}
++		//printf ("adding SIB 0x%x\n", SIB);
++		g (SIB);
++	};
++};
++
++
++void random_MOV_noise_to_reg (int r)
++{
++	oad (0xb8 + r, genrand()); // mov r, imm32
++};
++
++SValue* vstack_rnd ()
++{
++	int cnt;
++	int r;
++	SValue *p;
++
++	//printf ("vstack_rnd begin\n");
++
++	cnt=0;
++	for(p=vstack; p<=vtop; p++)
++		cnt++;
++
++	r=rand_reg (0, cnt);
++
++	cnt=0;
++	for(p=vstack; p<=vtop; p++)
++	{
++		if (cnt==r)
++		{
++			//printf ("vstack_rnd return\n");
++			return p;
++		};
++		cnt++;
++	};
++
++	//printf ("vstack_rnd return NULL\n");
++	return NULL;
++};
++
++void random_noise_to_reg (int r)
++{
++	//printf ("random_noise_to_reg (%d)\n", r);
++
++	switch (rand_reg(0,3))
++	{
++	case 0:
++	{
++                SValue *p;
++		p=vstack_rnd();
++		if (p!=NULL)
++			load (r, p);
++	};
++		// -> case 1
++
++	case 1:
++	{
++		int opc=rand_reg (0, 6);
++		int fr=rand_reg (0, 3);
++
++		o((opc << 3) | 0x01); // ins ...
++		o(0xc0 + r + fr * 8); // ... r, fr
++
++		if ((opc==5 || opc==6) && fr==r) // SUB or XOR
++		{
++			g(0x75); // add random JNZ
++			g(genrand()&0xFF);
++		};
++
++	};
++	break;
++
++	case 2:
++		random_LEA_noise_to_reg (r);
++		break;
++
++	case 3:
++		random_MOV_noise_to_reg (r);
++		break;
++
++	};
++
++};
++
++void print_vstack ()
++{
++	SValue *p;
++
++	printf ("print_vstack()\n");
++	for(p=vstack; p<=vtop; p++)
++	{
++		printf ("p->r = 0x%x\n", p->r);
++	};
++};
++
++int is_reg_in_vstack (int r)
++{
++	SValue *p;
++
++	for(p=vstack; p<=vtop; p++)
++		if (r==((p->r)&0xFF))
++			return 1;
++
++	return 0;
++};
++
++void random_noise_to_regs (int save_EAX)
++{
++	int i,t;
++
++	//printf ("random_noise_to_regs\n");
++
++	//print_vstack();
++
++	t=rand_reg(1,20);
++	//t=1;
++	for (i=0; i<t; i++)
++	{
++		int r=rand_reg (save_EAX==1 ? 1 : 0, 3);
++
++		if (is_reg_in_vstack (r)==0)
++		{
++			if (vtop->r == VT_CMP)
++			{
++			// BUG?
++			//	if (rand_reg(0,1)==0)
++			//		random_LEA_noise_to_reg (r);
++			//	else
++			//		random_MOV_noise_to_reg (r);
++			}
++			else
++				random_noise_to_reg (r);
++		};
++	};
++};
+diff -bur .//tcc-0.9.25/lib/libtcc1.c ./src/lib/libtcc1.c
+--- .//tcc-0.9.25/lib/libtcc1.c	2009-05-18 22:27:06.000000000 +0800
++++ ./src/lib/libtcc1.c	2010-11-21 10:00:04.194335900 +0800
+@@ -605,3 +605,11 @@
+         return 0;
+ }
+ 
++int __noise_const1=0x7E4D1944;
++int __noise_const2=0xE5F3DA1C;
++int __noise_const3=0x4CE45CAF;
++int __noise_const4=0xC88F43F7;
++int __noise_const5=0x833EDD32;
++int __noise_const6=0x5918E72B;
++int __noise_const7=0xD19781E9;
++int __noise_const8=0xD15899C6;
+Only in ./src/lib: libtcc1.c~
+diff -bur .//tcc-0.9.25/libtcc.c ./src/libtcc.c
+--- .//tcc-0.9.25/libtcc.c	2009-05-18 22:27:06.000000000 +0800
++++ ./src/libtcc.c	2019-03-13 17:14:27.529778211 +0800
+@@ -1825,7 +1825,7 @@
+     /* default library paths */
+     tcc_add_library_path(s, CONFIG_SYSROOT "/usr/local/lib");
+     tcc_add_library_path(s, CONFIG_SYSROOT "/usr/lib");
+-    tcc_add_library_path(s, CONFIG_SYSROOT "/lib");
++    tcc_add_library_path(s, CONFIG_SYSROOT "/lib32");
+ #endif
+ 
+     /* no section zero */
+@@ -2257,3 +2257,86 @@
+            tt, (int)(total_lines / tt),
+            total_bytes / tt / 1000000.0);
+ }
++
++// rand
++
++#include <assert.h>
++
++/* Period parameters */  
++#define N 624
++#define M 397
++#define MATRIX_A 0x9908b0df   /* constant vector a */
++#define UPPER_MASK 0x80000000 /* most significant w-r bits */
++#define LOWER_MASK 0x7fffffff /* least significant r bits */
++
++/* Tempering parameters */   
++#define TEMPERING_MASK_B 0x9d2c5680
++#define TEMPERING_MASK_C 0xefc60000
++#define TEMPERING_SHIFT_U(y)  (y >> 11)
++#define TEMPERING_SHIFT_S(y)  (y << 7)
++#define TEMPERING_SHIFT_T(y)  (y << 15)
++#define TEMPERING_SHIFT_L(y)  (y >> 18)
++
++static unsigned long mt[N]; /* the array for the state vector  */
++static int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
++
++/* initializing the array with a NONZERO seed */
++void sgenrand (unsigned long seed)
++{
++	/* setting initial seeds to mt[N] using         */
++	/* the generator Line 25 of Table 1 in          */
++	/* [KNUTH 1981, The Art of Computer Programming */
++	/*    Vol. 2 (2nd Ed.), pp102]                  */
++	mt[0]= seed & 0xffffffff;
++	for (mti=1; mti<N; mti++)
++		mt[mti] = (69069 * mt[mti-1]) & 0xffffffff;
++}
++
++unsigned long genrand()
++{
++	unsigned long y;
++	static unsigned long mag01[2]={0x0, MATRIX_A};
++	/* mag01[x] = x * MATRIX_A  for x=0,1 */
++
++	if (mti >= N) { /* generate N words at one time */
++		int kk;
++
++		if (mti == N+1)   /* if sgenrand() has not been called, */
++			sgenrand(4357); /* a default initial seed is used   */
++
++		for (kk=0;kk<N-M;kk++) {
++			y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
++			mt[kk] = mt[kk+M] ^ (y >> 1) ^ mag01[y & 0x1];
++		}
++		for (;kk<N-1;kk++) {
++			y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
++			mt[kk] = mt[kk+(M-N)] ^ (y >> 1) ^ mag01[y & 0x1];
++		}
++		y = (mt[N-1]&UPPER_MASK)|(mt[0]&LOWER_MASK);
++		mt[N-1] = mt[M-1] ^ (y >> 1) ^ mag01[y & 0x1];
++
++		mti = 0;
++	}
++
++	y = mt[mti++];
++	y ^= TEMPERING_SHIFT_U(y);
++	y ^= TEMPERING_SHIFT_S(y) & TEMPERING_MASK_B;
++	y ^= TEMPERING_SHIFT_T(y) & TEMPERING_MASK_C;
++	y ^= TEMPERING_SHIFT_L(y);
++
++	return y; 
++}
++
++int rand_reg (int begin, int end)
++{
++	if (end<begin)
++	{
++		printf ("rand_reg (%d, %d)\n", begin, end);
++		assert (0);
++	};
++
++	if (end==begin)
++		return end;
++
++	return (genrand()/(0xFFFFFFFF/(end-begin+1)))+begin;
++};
+diff -bur .//tcc-0.9.25/libtcc.h ./src/libtcc.h
+--- .//tcc-0.9.25/libtcc.h	2009-05-18 22:27:06.000000000 +0800
++++ ./src/libtcc.h	2010-11-17 18:21:22.085937500 +0800
+@@ -101,6 +101,10 @@
+ /* set CONFIG_TCCDIR at runtime */
+ LIBTCCAPI void tcc_set_lib_path(TCCState *s, const char *path);
+ 
++void sgenrand (unsigned long seed);
++unsigned long genrand();
++int rand_reg (int begin, int end);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff -bur .//tcc-0.9.25/README ./src/README
+--- .//tcc-0.9.25/README	2009-05-18 22:27:06.000000000 +0800
++++ ./src/README	2019-03-13 19:07:35.166007597 +0800
+@@ -1,3 +1,9 @@
++Modified by hzshang
++origin  https://yurichev.com/blog/58/
++
++- support i386 arch obfuscation
++
++
+ Tiny C Compiler - C Scripting Everywhere - The Smallest ANSI C compiler
+ -----------------------------------------------------------------------
+ 
+diff -bur .//tcc-0.9.25/tcc.c ./src/tcc.c
+--- .//tcc-0.9.25/tcc.c	2009-05-18 22:27:06.000000000 +0800
++++ ./src/tcc.c	2010-11-17 18:21:51.250000000 +0800
+@@ -436,6 +436,8 @@
+     print_search_dirs = 0;
+     ret = 0;
+ 
++    sgenrand (time(NULL));
++
+     optind = parse_args(s, argc - 1, argv + 1);
+     if (print_search_dirs) {
+         /* enough for Linux kernel */
+Only in .//tcc-0.9.25/: tcc-doc.html
+diff -bur .//tcc-0.9.25/tcctok.h ./src/tcctok.h
+--- .//tcc-0.9.25/tcctok.h	2009-05-18 22:27:06.000000000 +0800
++++ ./src/tcctok.h	2019-03-13 16:59:15.149124166 +0800
+@@ -203,8 +203,16 @@
+      DEF(TOK___fixunssfdi, "__fixunssfdi")
+      DEF(TOK___fixunsdfdi, "__fixunsdfdi")
+ #endif
+-#ifdef TCC_TARGET_PE
++#ifdef TCC_TARGET_I386
+      DEF(TOK___chkstk, "__chkstk")
++     DEF(TOK___noise_const1, "__noise_const1")
++     DEF(TOK___noise_const2, "__noise_const2")
++     DEF(TOK___noise_const3, "__noise_const3")
++     DEF(TOK___noise_const4, "__noise_const4")
++     DEF(TOK___noise_const5, "__noise_const5")
++     DEF(TOK___noise_const6, "__noise_const6")
++     DEF(TOK___noise_const7, "__noise_const7")
++     DEF(TOK___noise_const8, "__noise_const8")
+ #endif
+ 
+ /* bound checking symbols */
