@@ -1,0 +1,10 @@
+
+checksec:
+Arch:     amd64-64-little
+RELRO:    Partial RELRO
+Stack:    No canary found
+NX:       NX enabled
+PIE:      No PIE (0x400000)
+
+file libc:
+libc-2.23.so: ELF 64-bit LSB shared object, x86-64, version 1 (GNU/Linux), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=b5381a457906d279073822a5ceb24c4bfef94ddb, for GNU/Linux 2.6.32, stripped
