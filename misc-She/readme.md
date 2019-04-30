@@ -1,4 +1,4 @@
-# She
+## She
 
 The game is divided into two parts: defeating BOSS, solving the gate password
 
