@@ -6,4 +6,4 @@
 
 3. Open the png in Stegsolve and check the LSB.
 
-![img](<https://raw.githubusercontent.com/wiki/sixstars/starctf2019/otaku2.png>)
+ ![img](<https://raw.githubusercontent.com/wiki/sixstars/starctf2019/otaku2.png>)
