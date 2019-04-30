@@ -14,7 +14,7 @@ Method 3: Use CE to modify the protagonist HP\MP and money, buy the best weapons
 
  
 
-![img](file:///C:/Users/Ryan/AppData/Local/Temp/msohtmlclip1/01/clip_image002.jpg)
+![img](https://raw.githubusercontent.com/wiki/sixstars/starctf2019/prompt.jpg)
 
  
 
