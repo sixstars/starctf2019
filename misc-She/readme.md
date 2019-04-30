@@ -1,6 +1,6 @@
 # She
 
-The game is divided into two parts: defeating BOSS, walking the password gate
+The game is divided into two parts: defeating BOSS, solving the gate password
 
 The BOSS part must kill a BOSS with a high blood volume, attack, and defense, which cannot be achieved by just leveling-up.
 
