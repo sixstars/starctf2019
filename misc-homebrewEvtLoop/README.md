@@ -15,7 +15,7 @@ session[args[0]][52]in[event[8]][0]and[dir][0]or[abcdefghijklmnopqrstuvwxyzABCDE
 
 Blind injection by changing the indexes, `[52]` of `session[args[0]]`(`session['log']`) and `[8]` of `event`, with reusing the submitted string `event` as alphabet.     
 
-Alternatively, you can use `valid_event_chars` as alphabet, or get the flag directly by using an exploit of stage 2.
+Alternatively, you can use `valid_event_chars` as alphabet, or get the flag directly by using a `list comprehension exploit` of stage 2 like `[[str][0]for[args]in[[session]]][0]114514`.
 
 #### stage 2 (Remote Code Execution)
 ```python
